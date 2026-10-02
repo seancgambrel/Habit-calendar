@@ -1,0 +1,13 @@
+{
+  "name": "Habit Calendar",
+  "short_name": "Habit",
+  "description": "Simple color-coded habit calendar",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f7f5",
+  "theme_color": "#f7f7f5",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

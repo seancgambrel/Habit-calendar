@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f7f5">
+<meta name="description" content="A simple private habit calendar">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Habit Calendar</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#f7f7f5}
+*{box-sizing:border-box} body{margin:0}.app{max-width:600px;margin:auto;padding:22px 14px 36px}
+.nav{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:10px;margin-bottom:18px}
+.nav button,.today,.tools button,.import-label{min-height:46px;border:1px solid #d1d5db;border-radius:10px;background:white;color:#1f2937;font-size:16px;cursor:pointer}
+.nav button{font-size:28px}.heading{text-align:center}.heading h1{font-size:22px;margin:0}.heading p{font-size:14px;color:#6b7280;margin:3px 0 0}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.week{font-size:12px;font-weight:650;color:#6b7280;text-align:center;margin-bottom:5px}
+.day,.empty{aspect-ratio:1}.day{border:1px solid #d1d5db;border-radius:9px;background:white;font-weight:650;font-size:16px;color:#1f2937;cursor:pointer}
+.day.green{background:#3f9b59;color:white;border-color:#3f9b59}.day.yellow{background:#ffe34d;color:#292200;border-color:#e3c62f}
+.day.orange{background:#df7b2e;color:white;border-color:#df7b2e}.day.red{background:#b51f2e;color:white;border-color:#971824}
+.day.todaymark{box-shadow:inset 0 0 0 3px #1f2937}
+.legend{display:flex;justify-content:center;flex-wrap:wrap;gap:10px 16px;margin:18px 0;color:#4b5563;font-size:14px}.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:14px;height:14px;border-radius:3px}.green-dot{background:#3f9b59}.yellow-dot{background:#ffe34d}.orange-dot{background:#df7b2e}.red-dot{background:#b51f2e}
+.today{display:block;margin:0 auto;padding:0 24px;font-weight:650}.tools{margin-top:24px;padding-top:18px;border-top:1px solid #e5e7eb;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.tools button,.import-label{padding:0 14px;display:inline-flex;align-items:center}.tools input{display:none}.note{text-align:center;font-size:12px;color:#6b7280;margin-top:10px}
+.status{text-align:center;min-height:20px;color:#4b5563;font-size:13px}@media(max-width:360px){.app{padding-left:9px;padding-right:9px}.day{font-size:14px}.week,.grid{gap:3px}}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="nav">
+<button id="prev" aria-label="Previous month">‹</button>
+<div class="heading"><h1 id="month"></h1><p>Tap a day to record it</p></div>
+<button id="next" aria-label="Next month">›</button>
+</div>
+<div class="week" aria-hidden="true"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+<div id="grid" class="grid" aria-label="Habit calendar"></div>
+<div class="legend">
+<span><i class="dot green-dot"></i>0</span><span><i class="dot yellow-dot"></i>1–2</span><span><i class="dot orange-dot"></i>3–5</span><span><i class="dot red-dot"></i>6+</span>
+</div>
+<button class="today" id="today">Today</button>
+<section class="tools"><button id="export">Export backup</button><label class="import-label">Import backup<input id="import" type="file" accept="application/json,.json"></label></section>
+<p class="note">Entries are saved on this device. Export a backup occasionally if you want a copy.</p>
+<div class="status" id="status" aria-live="polite"></div>
+</main>
+<script>
+const STORAGE_KEY="habit-calendar-v1";
+const states=["","green","yellow","orange","red"];
+const stateLabels={"":"not recorded",green:"0",yellow:"1–2",orange:"3–5",red:"6+"};
+let data={}; try{data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")||{}}catch(e){data={}}
+const now=new Date(); let year=now.getFullYear(),month=now.getMonth();
+const grid=document.getElementById("grid"),monthEl=document.getElementById("month"),status=document.getElementById("status");
+const key=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+const title=(y,m)=>new Intl.DateTimeFormat(undefined,{month:"long",year:"numeric"}).format(new Date(y,m,1));
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+function render(){
+ monthEl.textContent=title(year,month); grid.innerHTML="";
+ const first=new Date(year,month,1).getDay(),count=new Date(year,month+1,0).getDate();
+ for(let i=0;i<first;i++){const e=document.createElement("div");e.className="empty";grid.appendChild(e)}
+ for(let d=1;d<=count;d++){
+  const k=key(year,month,d),s=data[k]||""; const b=document.createElement("button");
+  b.type="button";b.className="day"+(s?" "+s:"");
+  if(year===now.getFullYear()&&month===now.getMonth()&&d===now.getDate())b.classList.add("todaymark");
+  b.textContent=d;b.setAttribute("aria-label",title(year,month).split(" ")[0]+" "+d+": "+stateLabels[s]);
+  b.addEventListener("click",()=>{const n=states[(states.indexOf(data[k]||"")+1)%states.length];if(n)data[k]=n;else delete data[k];save();render()});
+  grid.appendChild(b);
+ }
+}
+document.getElementById("prev").addEventListener("click",()=>{if(--month<0){month=11;year--}render()});
+document.getElementById("next").addEventListener("click",()=>{if(++month>11){month=0;year++}render()});
+document.getElementById("today").addEventListener("click",()=>{const d=new Date();year=d.getFullYear();month=d.getMonth();render()});
+document.getElementById("export").addEventListener("click",()=>{
+ const blob=new Blob([JSON.stringify({version:1,entries:data},null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="habit-calendar-backup.json";a.click();
+ setTimeout(()=>URL.revokeObjectURL(a.href),1000);status.textContent="Backup exported.";
+});
+document.getElementById("import").addEventListener("change",async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{const obj=JSON.parse(await f.text());if(!obj||obj.version!==1||typeof obj.entries!=="object"||Array.isArray(obj.entries))throw Error();
+ data=obj.entries;save();render();status.textContent="Backup imported."}catch(err){status.textContent="That backup file could not be read."}
+ e.target.value="";
+});
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
+render();
+</script>
+</body></html>
